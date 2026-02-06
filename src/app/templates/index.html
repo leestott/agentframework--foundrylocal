@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Local Research & Synthesis Desk - Multi-Agent Orchestration Demo using Microsoft Agent Framework and Foundry Local">
+    <meta name="theme-color" content="#0f1117">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>Local Research &amp; Synthesis Desk</title>
+    <style>
+        /* ─── Reset & Variables ─────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface-raised: #232736;
+            --border: #2d3348;
+            --text: #e4e6ed;
+            --text-dim: #8b8fa3;
+            --accent: #5b7ff5;
+            --accent-glow: rgba(91, 127, 245, 0.15);
+            --green: #3dd68c;
+            --yellow: #f5c542;
+            --red: #f55b5b;
+            --cyan: #4ac6e0;
+            --purple: #a678f5;
+            --orange: #f5a442;
+            --radius: 12px;
+            --transition: 0.2s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* ─── Layout ────────────────────────────────────────── */
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding: 32px 0 24px;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        header p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        .badge-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .badge.model { color: var(--cyan); border-color: var(--cyan); }
+        .badge.status { color: var(--green); border-color: var(--green); }
+        .badge.docs { color: var(--purple); border-color: var(--purple); }
+
+        /* ─── Tabs ──────────────────────────────────────────── */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 24px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            color: var(--text-dim);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .tab-btn:hover { color: var(--text); background: var(--surface-raised); }
+        .tab-btn.active { background: var(--accent); color: #fff; }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ─── Input Area ────────────────────────────────────── */
+        .input-area {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .input-row textarea {
+            flex: 1;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            resize: none;
+            height: 52px;
+            transition: border-color var(--transition);
+        }
+
+        .input-row textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .input-row textarea::placeholder {
+            color: var(--text-dim);
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--surface-raised);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            background: transparent;
+            color: var(--text-dim);
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .mode-btn:hover { color: var(--text); }
+        .mode-btn.active { background: var(--accent); color: #fff; }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background: var(--surface-raised);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-secondary:hover { border-color: var(--accent); }
+        .btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ─── Pipeline Visualisation ────────────────────────── */
+        .pipeline {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding: 12px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .pipe-node {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .pipe-node.active {
+            border-color: var(--yellow);
+            color: var(--yellow);
+            box-shadow: 0 0 12px rgba(245, 197, 66, 0.2);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .pipe-node.done {
+            border-color: var(--green);
+            color: var(--green);
+            background: rgba(61, 214, 140, 0.08);
+        }
+
+        .pipe-node.error { border-color: var(--red); color: var(--red); }
+
+        .pipe-arrow { color: var(--text-dim); font-size: 1.2rem; }
+
+        .pipe-parallel {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .pipe-parallel-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--cyan);
+            font-weight: 700;
+        }
+
+        .pipe-parallel-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 8px rgba(245, 197, 66, 0.15); }
+            50% { box-shadow: 0 0 20px rgba(245, 197, 66, 0.35); }
+        }
+
+        /* ─── Agent Steps ───────────────────────────────────── */
+        .steps-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .step-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .step-card.active { border-color: var(--yellow); }
+        .step-card.done { border-color: var(--green); }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        .step-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .step-icon.planner { background: rgba(91, 127, 245, 0.15); }
+        .step-icon.retriever { background: rgba(61, 214, 140, 0.15); }
+        .step-icon.toolagent { background: rgba(74, 198, 224, 0.15); }
+        .step-icon.critic { background: rgba(245, 197, 66, 0.15); }
+        .step-icon.writer { background: rgba(166, 120, 245, 0.15); }
+        .step-icon.concurrent { background: rgba(245, 164, 66, 0.15); }
+
+        .step-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .step-description {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .step-meta {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .step-time { font-variant-numeric: tabular-nums; }
+
+        .step-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+        }
+
+        .step-status.active { background: var(--yellow); animation: pulse-dot 1s infinite; }
+        .step-status.done { background: var(--green); }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .step-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .step-body.open { max-height: 2000px; }
+
+        .step-content {
+            padding: 0 16px 16px;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: var(--text);
+            border-top: 1px solid var(--border);
+            padding-top: 12px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+        }
+
+        /* ─── Final Report ──────────────────────────────────── */
+        .report-card {
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-top: 24px;
+            display: none;
+        }
+
+        .report-card.visible { display: block; }
+
+        .report-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .report-content {
+            font-size: 0.92rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* ─── Tool Demo Tab ─────────────────────────────────── */
+        .tool-results {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tool-result-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+        }
+
+        .tool-result-card .test-name {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tool-result-card .test-output {
+            font-size: 0.88rem;
+            color: var(--text-dim);
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            white-space: pre-wrap;
+        }
+
+        .test-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; }
+        .test-badge.pass { background: rgba(61, 214, 140, 0.15); color: var(--green); }
+        .test-badge.fail { background: rgba(245, 91, 91, 0.15); color: var(--red); }
+
+        /* ─── Demos Tab ─────────────────────────────────────── */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .demo-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .demo-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(91, 127, 245, 0.15);
+        }
+
+        .demo-card.selected {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .demo-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .demo-card-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-raised);
+            border-radius: 8px;
+        }
+
+        .demo-card-title {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .demo-card-category {
+            font-size: 0.7rem;
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .demo-card-description {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .demo-card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .demo-tag {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: var(--surface-raised);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+
+        .demo-run-area {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            display: none;
+        }
+
+        .demo-run-area.visible {
+            display: block;
+        }
+
+        .demo-run-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .demo-run-icon {
+            font-size: 1.5rem;
+        }
+
+        .demo-run-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .demo-run-description {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            padding: 12px;
+            background: var(--surface-raised);
+            border-radius: 8px;
+        }
+
+        .demo-results {
+            margin-top: 24px;
+        }
+
+        /* ─── Demo Tip (Suggested Prompt) ───────────────────── */
+        .demo-tip {
+            background: linear-gradient(135deg, rgba(91, 127, 245, 0.1), rgba(74, 198, 224, 0.1));
+            border: 1px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .demo-tip.visible {
+            display: block;
+        }
+
+        .demo-tip-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .demo-tip-icon {
+            font-size: 1.1rem;
+        }
+
+        .demo-tip-label {
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.85rem;
+            flex: 1;
+        }
+
+        .demo-tip-copy {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .demo-tip-copy:hover {
+            filter: brightness(1.1);
+        }
+
+        .demo-tip-copy:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .demo-tip-text {
+            font-size: 0.88rem;
+            color: var(--text);
+            background: var(--surface-raised);
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        /* ─── Spinner ───────────────────────────────────────── */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ─── Empty State ───────────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+
+        .empty-state .icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-state h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 8px; }
+        .empty-state p { font-size: 0.9rem; max-width: 400px; margin: 0 auto; }
+
+        /* ─── Responsive ────────────────────────────────────── */
+        /* Large tablets and small desktops */
+        @media (max-width: 1024px) {
+            .app { max-width: 100%; padding: 20px; }
+            .demo-grid { grid-template-columns: repeat(2, 1fr); }
+            .step-content { font-size: 0.85rem; }
+        }
+
+        /* Tablets */
+        @media (max-width: 768px) {
+            .app { padding: 16px; }
+            header { padding: 24px 0 16px; margin-bottom: 24px; }
+            header h1 { font-size: 1.5rem; }
+            header p { font-size: 0.85rem; }
+            .badge-row { gap: 6px; }
+            .badge { font-size: 0.7rem; padding: 2px 8px; }
+            .tabs { flex-wrap: wrap; }
+            .tab-btn { padding: 8px 12px; font-size: 0.8rem; flex: 1 1 45%; }
+            .input-area { padding: 16px; }
+            .input-row { flex-direction: column; gap: 10px; }
+            .input-row textarea { height: 60px; }
+            .controls { flex-direction: column; align-items: stretch; gap: 10px; }
+            .mode-toggle { justify-content: center; }
+            .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+            .pipeline { gap: 2px; font-size: 0.7rem; flex-wrap: wrap; }
+            .pipe-node { padding: 6px 10px; font-size: 0.7rem; }
+            .pipe-arrow { font-size: 1rem; }
+            .demo-grid { grid-template-columns: 1fr; gap: 12px; }
+            .demo-card { padding: 14px; }
+            .demo-run-area { padding: 16px; }
+            .step-card { margin-bottom: 12px; }
+            .step-header { padding: 10px 14px; }
+            .step-icon { width: 28px; height: 28px; font-size: 0.9rem; }
+            .step-name { font-size: 0.9rem; }
+            .step-content { padding: 0 14px 14px; font-size: 0.82rem; }
+            .report-card { padding: 16px; }
+            .report-card h3 { font-size: 1rem; }
+            .report-content { font-size: 0.88rem; }
+        }
+
+        /* Mobile phones */
+        @media (max-width: 480px) {
+            .app { padding: 12px; }
+            header { padding: 16px 0 12px; margin-bottom: 16px; }
+            header h1 { font-size: 1.25rem; }
+            header p { font-size: 0.8rem; }
+            .badge { font-size: 0.65rem; padding: 2px 6px; }
+            .tabs { gap: 2px; padding: 3px; }
+            .tab-btn { padding: 8px 6px; font-size: 0.75rem; flex: 1 1 48%; }
+            .input-area { padding: 12px; margin-bottom: 16px; }
+            .input-row textarea { font-size: 0.9rem; padding: 10px 12px; }
+            .mode-btn { padding: 6px 10px; font-size: 0.8rem; }
+            .btn-primary { padding: 10px 16px; font-size: 0.9rem; }
+            .pipeline { display: none; } /* Hide complex pipeline on small screens */
+            .demo-card-header { gap: 10px; }
+            .demo-card-icon { width: 36px; height: 36px; font-size: 1.2rem; }
+            .demo-card-title { font-size: 0.95rem; }
+            .demo-card-description { font-size: 0.8rem; }
+            .demo-tip { padding: 10px 12px; }
+            .demo-tip-text { font-size: 0.82rem; padding: 8px 10px; }
+            .step-header-left { gap: 8px; }
+            .step-meta { gap: 6px; font-size: 0.75rem; }
+            .tool-result-card { padding: 12px; }
+            .tool-result-card .test-name { font-size: 0.9rem; flex-wrap: wrap; gap: 6px; }
+            .tool-result-card .test-output { font-size: 0.8rem; }
+        }
+
+        /* Extra small devices */
+        @media (max-width: 360px) {
+            .app { padding: 8px; }
+            header h1 { font-size: 1.1rem; }
+            .tab-btn { font-size: 0.7rem; padding: 6px 4px; }
+            .badge-row { flex-direction: column; gap: 4px; }
+            .demo-card { padding: 12px; }
+            .demo-run-area { padding: 12px; }
+        }
+
+        /* Landscape orientation on mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            header { padding: 12px 0; margin-bottom: 12px; }
+            .input-area { margin-bottom: 12px; }
+            .steps-container { max-height: 40vh; overflow-y: auto; }
+        }
+
+        /* Touch-friendly improvements */
+        @media (hover: none) and (pointer: coarse) {
+            /* Ensure minimum tap target size of 44px */
+            .tab-btn, .btn-primary, .btn-secondary, .mode-btn, .demo-tip-copy {
+                min-height: 44px;
+            }
+            .demo-card {
+                min-height: 44px;
+            }
+            .step-header {
+                min-height: 48px;
+            }
+            /* Remove hover effects on touch devices */
+            .btn-primary:hover { filter: none; transform: none; }
+            .demo-card:hover { transform: none; box-shadow: none; }
+            /* Active states for touch feedback */
+            .btn-primary:active { filter: brightness(0.9); }
+            .demo-card:active { background: var(--surface-raised); }
+            .tab-btn:active { background: var(--accent); color: #fff; }
+        }
+
+        /* ─── Accessibility ─────────────────────────────────── */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Focus styles for keyboard navigation */
+        .tab-btn:focus,
+        .btn-primary:focus,
+        .btn-secondary:focus,
+        .mode-btn:focus,
+        .demo-card:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            :root {
+                --border: #666;
+                --text-dim: #aaa;
+            }
+            .demo-card:hover,
+            .demo-card.selected {
+                border-width: 2px;
+            }
+        }
+
+        /* Reduced motion support */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ─── Scrollbar ─────────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header>
+            <h1>&#x1F9E0; Local Research &amp; Synthesis Desk</h1>
+            <p>Multi-Agent Orchestration &bull; Microsoft Agent Framework + Foundry Local</p>
+            <div class="badge-row" id="badges">
+                <span class="badge status" id="badge-status">Connecting…</span>
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <div class="tabs" role="tablist" aria-label="Main navigation">
+            <button class="tab-btn active" data-tab="workflow" role="tab" aria-selected="true" aria-controls="tab-workflow" id="tab-btn-workflow">&#x1F50D; Research Workflow</button>
+            <button class="tab-btn" data-tab="demos" role="tab" aria-selected="false" aria-controls="tab-demos" id="tab-btn-demos">&#x1F3AE; Demos</button>
+            <button class="tab-btn" data-tab="tools" role="tab" aria-selected="false" aria-controls="tab-tools" id="tab-btn-tools">&#x1F527; Tool Demo</button>
+            <button class="tab-btn" data-tab="about" role="tab" aria-selected="false" aria-controls="tab-about" id="tab-btn-about">&#x2139;&#xFE0F; About</button>
+        </div>
+
+        <!-- ═══ Workflow Tab ═══ -->
+        <div class="tab-panel active" id="tab-workflow" role="tabpanel" aria-labelledby="tab-btn-workflow">
+            <!-- Input Area -->
+            <div class="input-area">
+                <div class="input-row">
+                    <label for="question" class="visually-hidden">Research question</label>
+                    <textarea id="question" aria-label="Enter your research question" placeholder="Type your research question… (e.g. &quot;What are the key features of Foundry Local?&quot;)" rows="1"></textarea>
+                    <button class="btn-primary" id="btn-run" onclick="runWorkflow()" aria-label="Run research workflow">
+                        <span id="btn-run-text">&#x25B6; Run</span>
+                    </button>
+                </div>
+                <div class="controls" role="group" aria-label="Workflow controls">
+                    <div class="mode-toggle" role="radiogroup" aria-label="Select orchestration mode">
+                        <button class="mode-btn active" data-mode="full" onclick="setMode('full', this)" role="radio" aria-checked="true">Full (Seq + Concurrent)</button>
+                        <button class="mode-btn" data-mode="sequential" onclick="setMode('sequential', this)" role="radio" aria-checked="false">Sequential Only</button>
+                    </div>
+                    <button class="btn-secondary" onclick="clearResults()" aria-label="Clear results">Clear</button>
+                </div>
+            </div>
+
+            <!-- Pipeline Visualisation  -->
+            <div id="pipeline-full" class="pipeline" style="display:none;" role="img" aria-label="Full pipeline: Planner, then concurrent Retriever and ToolAgent, then Critic, then Writer">
+                <div class="pipe-node planner" id="pipe-Planner">&#x1F5C2; Planner</div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-parallel">
+                    <span class="pipe-parallel-label">concurrent</span>
+                    <div class="pipe-parallel-group">
+                        <div class="pipe-node retriever" id="pipe-Retriever">&#x1F50D; Retriever</div>
+                        <div class="pipe-node toolagent" id="pipe-ToolAgent">&#x1F527; ToolAgent</div>
+                    </div>
+                </div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-node critic" id="pipe-Critic">&#x1F9D0; Critic</div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-node writer" id="pipe-Writer">&#x270D;&#xFE0F; Writer</div>
+            </div>
+
+            <div id="pipeline-seq" class="pipeline" style="display:none;">
+                <div class="pipe-node planner" id="pipe-seq-Planner">&#x1F5C2; Planner</div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-node retriever" id="pipe-seq-Retriever">&#x1F50D; Retriever</div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-node critic" id="pipe-seq-Critic">&#x1F9D0; Critic</div>
+                <span class="pipe-arrow">&#x2192;</span>
+                <div class="pipe-node writer" id="pipe-seq-Writer">&#x270D;&#xFE0F; Writer</div>
+            </div>
+
+            <!-- Steps -->
+            <div id="steps" class="steps-container">
+                <div class="empty-state" id="empty-state">
+                    <div class="icon">&#x1F4DD;</div>
+                    <h3>Ready to Research</h3>
+                    <p>Type a question above and click Run. The agents will work together to produce a comprehensive answer from your local documents.</p>
+                </div>
+            </div>
+
+            <!-- Final Report -->
+            <div class="report-card" id="report-card">
+                <h3>&#x1F4CB; Final Report</h3>
+                <div class="report-content" id="report-content"></div>
+            </div>
+        </div>
+
+        <!-- ═══ Demos Tab ═══ -->
+        <div class="tab-panel" id="tab-demos" role="tabpanel" aria-labelledby="tab-btn-demos">
+            <div class="input-area">
+                <h3 id="demo-section-title" style="margin-bottom: 8px;">&#x1F3AE; MAF Tool Calling Demos</h3>
+                <p style="color: var(--text-dim); margin-bottom: 16px;">
+                    Explore different ways the Microsoft Agent Framework uses tool calling and multi-agent orchestration.
+                    Select a demo below to see it in action.
+                </p>
+            </div>
+
+            <!-- Demo Grid -->
+            <div class="demo-grid" id="demo-grid" role="listbox" aria-label="Available demos">
+                <div class="empty-state" id="demo-loading">
+                    <div class="spinner"></div>
+                    <h3>Loading demos...</h3>
+                </div>
+            </div>
+
+            <!-- Demo Run Area -->
+            <div class="demo-run-area" id="demo-run-area" aria-live="polite">
+                <div class="demo-run-header">
+                    <span class="demo-run-icon" id="demo-run-icon">&#x1F527;</span>
+                    <div>
+                        <div class="demo-run-title" id="demo-run-title">Select a Demo</div>
+                        <div class="demo-card-category" id="demo-run-category">category</div>
+                    </div>
+                </div>
+                <div class="demo-run-description" id="demo-run-description">
+                    Select a demo from above to see its description and run it.
+                </div>
+                
+                <!-- Suggested Prompt Tip -->
+                <div class="demo-tip" id="demo-tip" role="note" aria-label="Suggested prompt">
+                    <div class="demo-tip-header">
+                        <span class="demo-tip-icon" aria-hidden="true">&#x1F4A1;</span>
+                        <span class="demo-tip-label">Try this prompt:</span>
+                        <button class="demo-tip-copy" onclick="copySuggestedPrompt()" aria-label="Copy suggested prompt to clipboard" title="Copy to prompt field">
+                            &#x1F4CB; Use This
+                        </button>
+                    </div>
+                    <div class="demo-tip-text" id="demo-tip-text"></div>
+                </div>
+                
+                <div class="input-row">
+                    <label for="demo-prompt" class="visually-hidden">Enter your prompt for this demo</label>
+                    <textarea id="demo-prompt" placeholder="Enter your prompt for this demo..." rows="2" aria-describedby="demo-run-description"></textarea>
+                    <button class="btn-primary" id="btn-demo-run" onclick="runSelectedDemo()" aria-label="Run selected demo">
+                        <span id="btn-demo-text">&#x25B6; Run Demo</span>
+                    </button>
+                </div>
+                <div class="demo-results" id="demo-results"></div>
+            </div>
+        </div>
+
+        <!-- ═══ Tool Demo Tab ═══ -->
+        <div class="tab-panel" id="tab-tools" role="tabpanel" aria-labelledby="tab-btn-tools">
+            <div class="input-area">
+                <p style="margin-bottom: 12px; color: var(--text-dim);">
+                    Validate that function/tool calling works with Foundry Local + MAF.
+                    This runs direct Python function calls and LLM-driven tool invocations.
+                </p>
+                <button class="btn-primary" id="btn-tools" onclick="runToolDemo()">
+                    <span id="btn-tools-text">&#x1F527; Run Tool Demo</span>
+                </button>
+            </div>
+            <div id="tool-results" class="tool-results"></div>
+        </div>
+
+        <!-- ═══ About Tab ═══ -->
+        <div class="tab-panel" id="tab-about" role="tabpanel" aria-labelledby="tab-btn-about">
+            <div class="input-area" style="line-height: 1.8;">
+                <h3 style="margin-bottom: 12px;">About This Demo</h3>
+                <p>This demo shows <strong>multi-agent orchestration</strong> using two Microsoft technologies:</p>
+                <ul style="margin: 12px 0 12px 24px;">
+                    <li><strong>Microsoft Agent Framework (MAF)</strong> &mdash; unified SDK for building AI agents with tool calling, orchestration patterns, and session management.</li>
+                    <li><strong>Foundry Local</strong> &mdash; on-device AI inference runtime. Models run on your GPU/NPU/CPU with no cloud connection needed.</li>
+                </ul>
+                <h3 style="margin-bottom: 8px; margin-top: 20px;">Agents</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px; font-weight: 600;">&#x1F5C2; Planner</td>
+                        <td style="padding: 8px; color: var(--text-dim);">Breaks your question into 2-4 sub-tasks</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px; font-weight: 600;">&#x1F50D; Retriever</td>
+                        <td style="padding: 8px; color: var(--text-dim);">Reads local files, extracts relevant snippets with citations</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px; font-weight: 600;">&#x1F527; ToolAgent</td>
+                        <td style="padding: 8px; color: var(--text-dim);">Computes word counts, keyword extraction via function calling</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 8px; font-weight: 600;">&#x1F9D0; Critic</td>
+                        <td style="padding: 8px; color: var(--text-dim);">Reviews for gaps and contradictions</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; font-weight: 600;">&#x270D;&#xFE0F; Writer</td>
+                        <td style="padding: 8px; color: var(--text-dim);">Produces the final report with source citations</td>
+                    </tr>
+                </table>
+                <h3 style="margin-bottom: 8px;">Orchestration Patterns</h3>
+                <p><strong>Sequential</strong>: Planner &rarr; Retriever &rarr; Critic &rarr; Writer (each depends on the previous).</p>
+                <p><strong>Concurrent</strong>: Retriever + ToolAgent run in parallel (independent tasks).</p>
+                <p><strong>Full</strong> mode combines both: sequential where needed, concurrent where possible.</p>
+                <h3 style="margin-bottom: 8px; margin-top: 20px;">References</h3>
+                <ul style="margin-left: 24px;">
+                    <li><a href="https://foundrylocal.ai" target="_blank" rel="noopener" style="color: var(--accent);">Foundry Local</a></li>
+                    <li><a href="https://github.com/microsoft/Foundry-Local" target="_blank" rel="noopener" style="color: var(--accent);">Foundry Local GitHub</a></li>
+                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/" target="_blank" rel="noopener" style="color: var(--accent);">Microsoft Agent Framework</a></li>
+                    <li><a href="https://pypi.org/project/agent-framework-core/" target="_blank" rel="noopener" style="color: var(--accent);">agent-framework-core (PyPI)</a></li>
+                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/overview" target="_blank" rel="noopener" style="color: var(--accent);">MAF Orchestration Patterns</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── State ──────────────────────────────────────────
+        let currentMode = 'full';
+        let isRunning = false;
+
+        // ─── Tabs ───────────────────────────────────────────
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update tab buttons
+                document.querySelectorAll('.tab-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                // Update tab panels
+                document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+                // Activate clicked tab
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+            
+            // Keyboard navigation for tabs
+            btn.addEventListener('keydown', (e) => {
+                const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+                const index = tabs.indexOf(btn);
+                let newIndex = -1;
+                
+                if (e.key === 'ArrowRight') {
+                    newIndex = (index + 1) % tabs.length;
+                } else if (e.key === 'ArrowLeft') {
+                    newIndex = (index - 1 + tabs.length) % tabs.length;
+                } else if (e.key === 'Home') {
+                    newIndex = 0;
+                } else if (e.key === 'End') {
+                    newIndex = tabs.length - 1;
+                }
+                
+                if (newIndex >= 0) {
+                    e.preventDefault();
+                    tabs[newIndex].focus();
+                    tabs[newIndex].click();
+                }
+            });
+        });
+
+        // ─── Mode Toggle ───────────────────────────────────
+        function setMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-checked', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-checked', 'true');
+        }
+
+        // ─── Status  ───────────────────────────────────────
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/status');
+                const d = await res.json();
+                if (d.status === 'ok') {
+                    document.getElementById('badges').innerHTML = `
+                        <span class="badge status">&#x2705; Connected</span>
+                        <span class="badge model">&#x1F916; ${d.model_alias}</span>
+                        <span class="badge docs">&#x1F4C4; ${d.documents} documents</span>
+                    `;
+                } else {
+                    document.getElementById('badges').innerHTML =
+                        `<span class="badge" style="color:var(--red); border-color:var(--red);">&#x274C; ${d.message}</span>`;
+                }
+            } catch (e) {
+                document.getElementById('badges').innerHTML =
+                    `<span class="badge" style="color:var(--yellow); border-color:var(--yellow);">&#x23F3; Bootstrapping…</span>`;
+                // Retry after 5s
+                setTimeout(fetchStatus, 5000);
+            }
+        }
+        fetchStatus();
+
+        // ─── Run Workflow (SSE) ─────────────────────────────
+        function runWorkflow() {
+            const question = document.getElementById('question').value.trim();
+            if (!question || isRunning) return;
+
+            isRunning = true;
+            const btn = document.getElementById('btn-run');
+            btn.disabled = true;
+            document.getElementById('btn-run-text').innerHTML = '<span class="spinner"></span> Running…';
+
+            clearResults();
+
+            // Show pipeline
+            const pFull = document.getElementById('pipeline-full');
+            const pSeq = document.getElementById('pipeline-seq');
+            pFull.style.display = currentMode === 'full' ? 'flex' : 'none';
+            pSeq.style.display = currentMode === 'sequential' ? 'flex' : 'none';
+
+            // Hide empty state
+            document.getElementById('empty-state').style.display = 'none';
+
+            const body = JSON.stringify({ question, mode: currentMode });
+
+            fetch('/api/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body,
+            }).then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        let msg = `Server error (${response.status})`;
+                        try { const j = JSON.parse(text); msg = j.error || j.message || msg; } catch(e) {}
+                        addStepCard('Error', msg, 'error');
+                        finish();
+                    });
+                }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) { finish(); return; }
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const evt = JSON.parse(line.slice(6));
+                                    handleEvent(evt);
+                                } catch (e) { /* ignore */ }
+                            }
+                        }
+                        read();
+                    });
+                }
+                read();
+            }).catch(err => {
+                addStepCard('Error', err.message, 'error');
+                finish();
+            });
+        }
+
+        function handleEvent(evt) {
+            switch (evt.type) {
+                case 'info':
+                    // nothing visible — badge already shows it
+                    break;
+                case 'step_start':
+                    setPipeState(evt.agent, 'active');
+                    addStepCard(evt.agent, evt.description || 'Processing…', 'active');
+                    break;
+                case 'step_done':
+                    setPipeState(evt.agent, 'done');
+                    updateStepCard(evt.agent, String(evt.output || ''), evt.elapsed, 'done');
+                    break;
+                case 'complete':
+                    showReport(String(evt.report || ''));
+                    break;
+                case 'error':
+                    addStepCard('Error', String(evt.message || 'Unknown error'), 'error');
+                    break;
+            }
+        }
+
+        function finish() {
+            isRunning = false;
+            const btn = document.getElementById('btn-run');
+            btn.disabled = false;
+            document.getElementById('btn-run-text').innerHTML = '&#x25B6; Run';
+        }
+
+        // ─── Pipeline state  ───────────────────────────────
+        function setPipeState(agent, state) {
+            const selectors = [`#pipe-${agent}`, `#pipe-seq-${agent}`];
+            selectors.forEach(sel => {
+                const el = document.querySelector(sel);
+                if (el) { el.className = el.className.replace(/ active| done/g, '') + ' ' + state; }
+            });
+            // For "Concurrent" label we animate Retriever + ToolAgent
+            if (agent === 'Concurrent') {
+                setPipeState('Retriever', state);
+                setPipeState('ToolAgent', state);
+            }
+        }
+
+        // ─── Step cards  ───────────────────────────────────
+        const agentIcons = {
+            Planner: '&#x1F5C2;', Retriever: '&#x1F50D;', Concurrent: '&#x26A1;',
+            ToolAgent: '&#x1F527;', Critic: '&#x1F9D0;', Writer: '&#x270D;&#xFE0F;',
+            Error: '&#x274C;'
+        };
+        const agentClasses = {
+            Planner: 'planner', Retriever: 'retriever', Concurrent: 'concurrent',
+            ToolAgent: 'toolagent', Critic: 'critic', Writer: 'writer', Error: ''
+        };
+
+        function addStepCard(agent, desc, state) {
+            const container = document.getElementById('steps');
+            const id = `step-${agent}`;
+            if (document.getElementById(id)) return; // already exists
+
+            const safeDesc = escapeHtml(desc);
+            const card = document.createElement('div');
+            card.className = `step-card ${state}`;
+            card.id = id;
+            card.innerHTML = `
+                <div class="step-header" onclick="toggleStep('${id}')">
+                    <div class="step-header-left">
+                        <div class="step-icon ${agentClasses[agent] || ''}">${agentIcons[agent] || '&#x25CF;'}</div>
+                        <div>
+                            <div class="step-name">${escapeHtml(agent)}</div>
+                            <div class="step-description">${safeDesc}</div>
+                        </div>
+                    </div>
+                    <div class="step-meta">
+                        <span class="step-time" id="${id}-time"></span>
+                        <div class="step-status ${state}"></div>
+                    </div>
+                </div>
+                <div class="step-body" id="${id}-body">
+                    <div class="step-content" id="${id}-content">
+                        ${state === 'active' ? '<span class="spinner"></span> Working…' : safeDesc}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+
+        function updateStepCard(agent, output, elapsed, state) {
+            const id = `step-${agent}`;
+            const card = document.getElementById(id);
+            if (!card) {
+                addStepCard(agent, '', state);
+            }
+            const c = document.getElementById(id);
+            if (c) {
+                c.className = `step-card ${state}`;
+                const s = c.querySelector('.step-status');
+                if (s) s.className = `step-status ${state}`;
+                const t = document.getElementById(`${id}-time`);
+                if (t && elapsed != null) t.textContent = `${elapsed}s`;
+                const content = document.getElementById(`${id}-content`);
+                if (content) content.textContent = String(output || '');
+                // Auto-open the step body
+                const body = document.getElementById(`${id}-body`);
+                if (body) body.classList.add('open');
+            }
+        }
+
+        function toggleStep(id) {
+            const body = document.getElementById(id + '-body');
+            if (body) body.classList.toggle('open');
+        }
+
+        function showReport(text) {
+            const card = document.getElementById('report-card');
+            document.getElementById('report-content').textContent = text;
+            card.classList.add('visible');
+        }
+
+        function clearResults() {
+            document.getElementById('steps').innerHTML = `
+                <div class="empty-state" id="empty-state">
+                    <div class="icon">&#x1F4DD;</div>
+                    <h3>Ready to Research</h3>
+                    <p>Type a question above and click Run.</p>
+                </div>
+            `;
+            document.getElementById('report-card').classList.remove('visible');
+            document.getElementById('pipeline-full').style.display = 'none';
+            document.getElementById('pipeline-seq').style.display = 'none';
+            // Reset pipe nodes
+            document.querySelectorAll('.pipe-node').forEach(n => {
+                n.className = n.className.replace(/ active| done| error/g, '');
+            });
+        }
+
+        // ─── Tool Demo ─────────────────────────────────────
+        async function runToolDemo() {
+            const btn = document.getElementById('btn-tools');
+            btn.disabled = true;
+            document.getElementById('btn-tools-text').innerHTML = '<span class="spinner"></span> Running…';
+            document.getElementById('tool-results').innerHTML = '';
+
+            try {
+                const res = await fetch('/api/tools', { method: 'POST' });
+                if (!res.ok) {
+                    const text = await res.text();
+                    let msg = `Server error (${res.status})`;
+                    try { const j = JSON.parse(text); msg = j.message || msg; } catch(e) { msg = text || msg; }
+                    throw new Error(msg);
+                }
+                const d = await res.json();
+                const container = document.getElementById('tool-results');
+
+                if (d.status === 'ok') {
+                    d.results.forEach(r => {
+                        const resultText = (typeof r.result === 'object') ? JSON.stringify(r.result, null, 2) : String(r.result || '');
+                        container.innerHTML += `
+                            <div class="tool-result-card">
+                                <div class="test-name">
+                                    ${escapeHtml(r.test)}
+                                    <span class="test-badge ${r.status}">${r.status === 'pass' ? '&#x2705; PASS' : '&#x274C; FAIL'}</span>
+                                    ${r.elapsed ? `<span style="color:var(--text-dim); font-weight:400; font-size:0.8rem;">${r.elapsed}s</span>` : ''}
+                                </div>
+                                <div class="test-output">${escapeHtml(resultText)}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    container.innerHTML = `
+                        <div class="tool-result-card" style="border-color: var(--red);">
+                            <div class="test-name">&#x274C; Error</div>
+                            <div class="test-output">${escapeHtml(d.message)}</div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                document.getElementById('tool-results').innerHTML = `
+                    <div class="tool-result-card" style="border-color: var(--red);">
+                        <div class="test-name">&#x274C; Network Error</div>
+                        <div class="test-output">${escapeHtml(e.message)}</div>
+                    </div>
+                `;
+            }
+
+            btn.disabled = false;
+            document.getElementById('btn-tools-text').innerHTML = '&#x1F527; Run Tool Demo';
+        }
+
+        function escapeHtml(s) {
+            if (s === null || s === undefined) return '';
+            // If s is an object/array, render it as formatted JSON
+            if (typeof s === 'object') {
+                try { s = JSON.stringify(s, null, 2); } catch(e) { s = String(s); }
+            } else {
+                s = String(s);
+            }
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        // ─── Enter key to submit ────────────────────────────
+        document.getElementById('question').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runWorkflow();
+            }
+        });
+
+        document.getElementById('demo-prompt').addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runSelectedDemo();
+            }
+        });
+
+        // ─── Demos State & Functions ────────────────────────
+        let demos = [];
+        let selectedDemo = null;
+        let isDemoRunning = false;
+
+        async function loadDemos() {
+            try {
+                const res = await fetch('/api/demos');
+                const d = await res.json();
+                if (d.status === 'ok') {
+                    demos = d.demos;
+                    renderDemoGrid();
+                }
+            } catch (e) {
+                document.getElementById('demo-grid').innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">&#x274C;</div>
+                        <h3>Failed to load demos</h3>
+                        <p>${escapeHtml(e.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderDemoGrid() {
+            const container = document.getElementById('demo-grid');
+            if (demos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">&#x1F4ED;</div>
+                        <h3>No demos available</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = demos.map(demo => `
+                <div class="demo-card" 
+                     data-demo-id="${demo.id}" 
+                     onclick="selectDemo('${demo.id}')"
+                     onkeydown="handleDemoCardKey(event, '${demo.id}')"
+                     role="option"
+                     aria-selected="false"
+                     tabindex="0">
+                    <div class="demo-card-header">
+                        <span class="demo-card-icon">${demo.icon}</span>
+                        <div>
+                            <div class="demo-card-title">${escapeHtml(demo.name)}</div>
+                            <div class="demo-card-category">${escapeHtml(demo.category)}</div>
+                        </div>
+                    </div>
+                    <div class="demo-card-description">${escapeHtml(demo.description)}</div>
+                    <div class="demo-card-tags">
+                        ${demo.tags.map(tag => `<span class="demo-tag">${escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleDemoCardKey(e, demoId) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectDemo(demoId);
+            }
+        }
+
+        function selectDemo(demoId) {
+            const demo = demos.find(d => d.id === demoId);
+            if (!demo) return;
+
+            selectedDemo = demo;
+
+            // Update card selection state
+            document.querySelectorAll('.demo-card').forEach(card => {
+                const isSelected = card.dataset.demoId === demoId;
+                card.classList.toggle('selected', isSelected);
+                card.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            });
+
+            // Show run area
+            const runArea = document.getElementById('demo-run-area');
+            runArea.classList.add('visible');
+
+            // Update run area content
+            document.getElementById('demo-run-icon').textContent = demo.icon;
+            document.getElementById('demo-run-title').textContent = demo.name;
+            document.getElementById('demo-run-category').textContent = demo.category;
+            document.getElementById('demo-run-description').textContent = demo.description;
+
+            // Update suggested prompt tip
+            const tipEl = document.getElementById('demo-tip');
+            const tipText = document.getElementById('demo-tip-text');
+            if (demo.suggested_prompt) {
+                tipText.textContent = demo.suggested_prompt;
+                tipEl.classList.add('visible');
+            } else {
+                tipEl.classList.remove('visible');
+            }
+
+            // Clear prompt field so user can use suggested prompt or type their own
+            const promptField = document.getElementById('demo-prompt');
+            promptField.value = '';
+            promptField.focus();
+
+            // Clear previous results
+            document.getElementById('demo-results').innerHTML = '';
+        }
+
+        function copySuggestedPrompt() {
+            if (!selectedDemo || !selectedDemo.suggested_prompt) return;
+            
+            const promptField = document.getElementById('demo-prompt');
+            promptField.value = selectedDemo.suggested_prompt;
+            promptField.focus();
+            
+            // Visual feedback
+            const copyBtn = document.querySelector('.demo-tip-copy');
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '&#x2705; Copied!';
+            copyBtn.style.background = 'var(--green)';
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.style.background = '';
+            }, 1500);
+        }
+
+        function runSelectedDemo() {
+            if (!selectedDemo || isDemoRunning) return;
+
+            const prompt = document.getElementById('demo-prompt').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt for the demo.');
+                return;
+            }
+
+            isDemoRunning = true;
+            const btn = document.getElementById('btn-demo-run');
+            btn.disabled = true;
+            document.getElementById('btn-demo-text').innerHTML = '<span class="spinner"></span> Running...';
+
+            const resultsContainer = document.getElementById('demo-results');
+            resultsContainer.innerHTML = `
+                <div class="steps-container" id="demo-steps">
+                    <div class="step-card active">
+                        <div class="step-header">
+                            <div class="step-header-left">
+                                <div class="step-icon" style="background: var(--accent-glow);">${selectedDemo.icon}</div>
+                                <div>
+                                    <div class="step-name">${escapeHtml(selectedDemo.name)}</div>
+                                    <div class="step-description">Processing...</div>
+                                </div>
+                            </div>
+                            <div class="step-meta">
+                                <span class="step-time"></span>
+                                <div class="step-status active"></div>
+                            </div>
+                        </div>
+                        <div class="step-body open">
+                            <div class="step-content"><span class="spinner"></span> Working...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            fetch(`/api/demo/${selectedDemo.id}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt }),
+            }).then(response => {
+                if (!response.ok) {
+                    // Non-streaming error — read body as text
+                    return response.text().then(text => {
+                        let msg = `Server error (${response.status})`;
+                        try { const j = JSON.parse(text); msg = j.error || j.message || msg; } catch(e) {}
+                        handleDemoEvent({ type: 'error', message: msg });
+                        finishDemo();
+                    });
+                }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                function read() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) { finishDemo(); return; }
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const evt = JSON.parse(line.slice(6));
+                                    handleDemoEvent(evt);
+                                } catch (e) { /* ignore */ }
+                            }
+                        }
+                        read();
+                    });
+                }
+                read();
+            }).catch(err => {
+                resultsContainer.innerHTML = `
+                    <div class="tool-result-card" style="border-color: var(--red);">
+                        <div class="test-name">&#x274C; Error</div>
+                        <div class="test-output">${escapeHtml(err.message)}</div>
+                    </div>
+                `;
+                finishDemo();
+            });
+        }
+
+        function handleDemoEvent(evt) {
+            const container = document.getElementById('demo-steps');
+            if (!container) return;
+
+            switch (evt.type) {
+                case 'step_start':
+                    // Update the existing card to show which step is running
+                    break;
+                case 'step_done':
+                    container.innerHTML = `
+                        <div class="step-card done">
+                            <div class="step-header" onclick="toggleStep('demo-step-main')">
+                                <div class="step-header-left">
+                                    <div class="step-icon" style="background: rgba(61, 214, 140, 0.15);">${selectedDemo ? selectedDemo.icon : '&#x2705;'}</div>
+                                    <div>
+                                        <div class="step-name">${escapeHtml(selectedDemo ? selectedDemo.name : (evt.agent || 'Demo'))}</div>
+                                        <div class="step-description">Completed</div>
+                                    </div>
+                                </div>
+                                <div class="step-meta">
+                                    <span class="step-time">${evt.elapsed != null ? evt.elapsed + 's' : ''}</span>
+                                    <div class="step-status done"></div>
+                                </div>
+                            </div>
+                            <div class="step-body open" id="demo-step-main-body">
+                                <div class="step-content">${escapeHtml(evt.output)}</div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'complete':
+                    // Show the final report if present and different from step_done
+                    if (evt.report) {
+                        const existing = container.querySelector('.step-content');
+                        if (existing && existing.textContent !== evt.report) {
+                            existing.textContent = evt.report;
+                        }
+                    }
+                    break;
+                case 'error':
+                    container.innerHTML = `
+                        <div class="tool-result-card" style="border-color: var(--red);">
+                            <div class="test-name">&#x274C; Error</div>
+                            <div class="test-output">${escapeHtml(evt.message)}</div>
+                            ${evt.traceback ? '<div class="test-output" style="margin-top:8px;font-size:0.75rem;color:var(--text-dim);">' + escapeHtml(evt.traceback) + '</div>' : ''}
+                        </div>
+                    `;
+                    break;
+            }
+        }
+
+        function finishDemo() {
+            isDemoRunning = false;
+            const btn = document.getElementById('btn-demo-run');
+            btn.disabled = false;
+            document.getElementById('btn-demo-text').innerHTML = '&#x25B6; Run Demo';
+        }
+
+        // Load demos on page load
+        loadDemos();
+    </script>
+</body>
+</html>
