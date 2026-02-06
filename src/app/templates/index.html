@@ -378,22 +378,68 @@
         .step-body {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.4s ease;
         }
 
-        .step-body.open { max-height: 2000px; }
+        .step-body.open { max-height: 50000px; }
 
         .step-content {
             padding: 0 16px 16px;
             font-size: 0.88rem;
             line-height: 1.7;
-            white-space: pre-wrap;
             word-wrap: break-word;
             color: var(--text);
             border-top: 1px solid var(--border);
             padding-top: 12px;
-            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
         }
+
+        /* Rendered markdown in output */
+        .step-content h1, .step-content h2, .step-content h3,
+        .step-content h4, .step-content h5, .step-content h6 {
+            color: var(--accent);
+            margin: 0.8em 0 0.4em;
+            font-weight: 600;
+        }
+        .step-content h1 { font-size: 1.3em; }
+        .step-content h2 { font-size: 1.15em; }
+        .step-content h3 { font-size: 1.05em; }
+        .step-content p { margin: 0.4em 0; }
+        .step-content ul, .step-content ol { margin: 0.4em 0; padding-left: 1.5em; }
+        .step-content li { margin: 0.2em 0; }
+        .step-content code {
+            background: rgba(255,255,255,0.08);
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        .step-content pre {
+            background: #0d0f14;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            overflow-x: auto;
+            margin: 0.6em 0;
+        }
+        .step-content pre code {
+            background: none;
+            padding: 0;
+            font-size: 0.85em;
+            line-height: 1.5;
+        }
+        .step-content blockquote {
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+            margin: 0.6em 0;
+            color: var(--text-dim);
+        }
+        .step-content table { border-collapse: collapse; margin: 0.6em 0; width: 100%; }
+        .step-content th, .step-content td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+        .step-content th { background: rgba(255,255,255,0.05); font-weight: 600; }
+        .step-content strong { color: #e2e8f0; }
+        .step-content em { color: var(--text-dim); }
+        .step-content a { color: var(--accent); }
+        .step-content hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
 
         /* ─── Final Report ──────────────────────────────────── */
         .report-card {
@@ -418,9 +464,15 @@
         .report-content {
             font-size: 0.92rem;
             line-height: 1.8;
-            white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .report-content h1, .report-content h2, .report-content h3 { color: var(--accent); margin: 0.8em 0 0.4em; }
+        .report-content p { margin: 0.4em 0; }
+        .report-content code { background: rgba(255,255,255,0.08); padding: 0.15em 0.4em; border-radius: 4px; font-family: 'Cascadia Code', monospace; }
+        .report-content pre { background: #0d0f14; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; overflow-x: auto; margin: 0.6em 0; }
+        .report-content pre code { background: none; padding: 0; }
+        .report-content ul, .report-content ol { padding-left: 1.5em; margin: 0.4em 0; }
+        .report-content strong { color: #e2e8f0; }
 
         /* ─── Tool Demo Tab ─────────────────────────────────── */
         .tool-results {
@@ -746,7 +798,7 @@
         @media (max-width: 768px) and (orientation: landscape) {
             header { padding: 12px 0; margin-bottom: 12px; }
             .input-area { margin-bottom: 12px; }
-            .steps-container { max-height: 40vh; overflow-y: auto; }
+            .steps-container { max-height: 70vh; overflow-y: auto; }
         }
 
         /* Touch-friendly improvements */
@@ -1025,6 +1077,7 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // ─── State ──────────────────────────────────────────
         let currentMode = 'full';
@@ -1269,7 +1322,7 @@
                 const t = document.getElementById(`${id}-time`);
                 if (t && elapsed != null) t.textContent = `${elapsed}s`;
                 const content = document.getElementById(`${id}-content`);
-                if (content) content.textContent = String(output || '');
+                if (content) content.innerHTML = renderMarkdown(output);
                 // Auto-open the step body
                 const body = document.getElementById(`${id}-body`);
                 if (body) body.classList.add('open');
@@ -1283,7 +1336,7 @@
 
         function showReport(text) {
             const card = document.getElementById('report-card');
-            document.getElementById('report-content').textContent = text;
+            document.getElementById('report-content').innerHTML = renderMarkdown(text);
             card.classList.add('visible');
         }
 
@@ -1359,7 +1412,6 @@
 
         function escapeHtml(s) {
             if (s === null || s === undefined) return '';
-            // If s is an object/array, render it as formatted JSON
             if (typeof s === 'object') {
                 try { s = JSON.stringify(s, null, 2); } catch(e) { s = String(s); }
             } else {
@@ -1368,6 +1420,19 @@
             const d = document.createElement('div');
             d.textContent = s;
             return d.innerHTML;
+        }
+
+        function renderMarkdown(s) {
+            if (s === null || s === undefined) return '';
+            if (typeof s === 'object') {
+                try { s = JSON.stringify(s, null, 2); } catch(e) { s = String(s); }
+            } else {
+                s = String(s);
+            }
+            if (typeof marked !== 'undefined' && marked.parse) {
+                try { return marked.parse(s); } catch(e) { /* fall through */ }
+            }
+            return escapeHtml(s);
         }
 
         // ─── Enter key to submit ────────────────────────────
@@ -1621,7 +1686,7 @@
                                 </div>
                             </div>
                             <div class="step-body open" id="demo-step-main-body">
-                                <div class="step-content">${escapeHtml(evt.output)}</div>
+                                <div class="step-content">${renderMarkdown(evt.output)}</div>
                             </div>
                         </div>
                     `;
@@ -1630,8 +1695,8 @@
                     // Show the final report if present and different from step_done
                     if (evt.report) {
                         const existing = container.querySelector('.step-content');
-                        if (existing && existing.textContent !== evt.report) {
-                            existing.textContent = evt.report;
+                        if (existing) {
+                            existing.innerHTML = renderMarkdown(evt.report);
                         }
                     }
                     break;
