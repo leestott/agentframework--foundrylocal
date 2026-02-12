@@ -1,16 +1,21 @@
 """
 Orchestration engine — Local Research & Synthesis Desk
 ──────────────────────────────────────────────────────
-Demonstrates **two** multi-agent orchestration patterns using
+Demonstrates **three** multi-agent orchestration patterns using
 Microsoft Agent Framework (MAF) + Foundry Local:
 
-  1. **Sequential pipeline**  (Planner → Retriever → Critic → Writer)
+  1. **Sequential pipeline**  (Planner → Retriever → Critic ⇄ Retriever → Writer)
      Each agent's output feeds the next as context.
      Best for: step-by-step workflows where order matters.
 
   2. **Concurrent fan-out**  (Retriever + ToolAgent run in parallel)
      Independent sub-tasks execute simultaneously; results are merged.
      Best for: independent analysis tasks that don't depend on each other.
+
+  3. **Critic–Retriever feedback loop**
+     When the Critic flags gaps, the Retriever re-runs to fill them.
+     The Critic then re-evaluates. Up to MAX_CRITIC_LOOPS iterations.
+     Best for: iterative refinement where quality matters.
 
 Reference:
   Orchestration overview – https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/overview
@@ -39,6 +44,10 @@ from .foundry_boot import FoundryConnection
 
 log = logging.getLogger(__name__)
 console = Console()
+
+# Maximum number of Critic → Retriever feedback iterations before
+# proceeding to the Writer regardless.
+MAX_CRITIC_LOOPS = 2
 
 
 @dataclass
@@ -70,6 +79,23 @@ async def _run_agent(agent, prompt: str) -> tuple[str, float]:
     return str(result), elapsed
 
 
+def _critic_found_gaps(critique_text: str) -> bool:
+    """Return True if the Critic's output signals gaps that need filling.
+
+    The Critic is instructed to start with 'GAPS FOUND' or 'NO GAPS'.
+    We also do a loose check in case the model doesn't follow the format
+    exactly.
+    """
+    upper = critique_text.strip().upper()
+    if upper.startswith("NO GAPS"):
+        return False
+    if upper.startswith("GAPS FOUND"):
+        return True
+    # Fallback heuristic: look for gap-related language
+    gap_signals = ["gap", "missing", "unanswered", "not addressed", "lacking", "incomplete"]
+    return any(signal in upper for signal in gap_signals)
+
+
 # ────────────────────────────────────────────────────────────────────
 # Pattern 1 — Sequential pipeline
 # ────────────────────────────────────────────────────────────────────
@@ -80,15 +106,12 @@ async def run_sequential(
     conn: FoundryConnection,
 ) -> WorkflowResult:
     """
-    Sequential orchestration:
-      Planner → Retriever → Critic → Writer
+    Sequential orchestration with Critic–Retriever feedback loop:
+      Planner → Retriever → Critic ⇄ Retriever (loop) → Writer
 
-    Each agent receives the accumulated context from all previous agents,
-    building a progressively richer understanding of the task.
-
-    Why sequential? The Writer needs the Critic's review, which needs the
-    Retriever's snippets, which needs the Planner's task breakdown.  Each
-    step depends on the one before it.
+    When the Critic flags gaps, the Retriever re-runs to fill them.
+    The loop runs up to MAX_CRITIC_LOOPS times before handing off
+    to the Writer.
     """
     wf = WorkflowResult(question=question)
     doc_block = docs.combined_text if docs.chunks else "(no documents provided)"
@@ -117,17 +140,46 @@ async def run_sequential(
     console.print(Markdown(snippets_text))
     console.print(f"  ⏱  {elapsed:.1f}s\n")
 
-    # Step 3 — Critique
-    console.print(Panel("🧐  [bold yellow]Critic[/] — reviewing for gaps & contradictions …"))
-    critic = create_critic(conn)
-    critic_prompt = (
-        f"Plan:\n{plan_text}\n\n"
-        f"Extracted snippets:\n{snippets_text}"
-    )
-    critique_text, elapsed = await _run_agent(critic, critic_prompt)
-    wf.steps.append(StepResult("Critic", critic_prompt, critique_text, elapsed))
-    console.print(Markdown(critique_text))
-    console.print(f"  ⏱  {elapsed:.1f}s\n")
+    # Step 3 — Critic ⇄ Retriever feedback loop
+    critique_text = ""
+    for iteration in range(1, MAX_CRITIC_LOOPS + 1):
+        label = f"(iteration {iteration}/{MAX_CRITIC_LOOPS})" if MAX_CRITIC_LOOPS > 1 else ""
+        console.print(Panel(f"🧐  [bold yellow]Critic[/] — reviewing for gaps & contradictions … {label}"))
+        critic = create_critic(conn)
+        critic_prompt = (
+            f"Plan:\n{plan_text}\n\n"
+            f"Extracted snippets:\n{snippets_text}"
+        )
+        critique_text, elapsed = await _run_agent(critic, critic_prompt)
+        wf.steps.append(StepResult(f"Critic (iter {iteration})", critic_prompt, critique_text, elapsed))
+        console.print(Markdown(critique_text))
+        console.print(f"  ⏱  {elapsed:.1f}s\n")
+
+        if not _critic_found_gaps(critique_text) or iteration == MAX_CRITIC_LOOPS:
+            if _critic_found_gaps(critique_text):
+                console.print("[dim]  Max iterations reached — proceeding to Writer.[/]\n")
+            else:
+                console.print("[dim]  ✅ No gaps — proceeding to Writer.[/]\n")
+            break
+
+        # Re-retrieve: send the gaps back to the Retriever
+        console.print(Panel(f"🔍  [bold green]Retriever[/] — filling gaps flagged by Critic … {label}"))
+        retriever = create_retriever(conn)
+        re_retriever_prompt = (
+            f"The Critic found these gaps in the previous retrieval:\n{critique_text}\n\n"
+            f"Original plan:\n{plan_text}\n\n"
+            f"Previous snippets (already retrieved):\n{snippets_text}\n\n"
+            f"Documents:\n{doc_block}\n\n"
+            f"Please find additional relevant passages to fill ONLY the gaps listed above. "
+            f"Do not repeat previously retrieved snippets."
+        )
+        new_snippets, elapsed = await _run_agent(retriever, re_retriever_prompt)
+        wf.steps.append(StepResult(f"Retriever (gap-fill {iteration})", re_retriever_prompt, new_snippets, elapsed))
+        console.print(Markdown(new_snippets))
+        console.print(f"  ⏱  {elapsed:.1f}s\n")
+
+        # Merge new snippets with existing ones
+        snippets_text = f"{snippets_text}\n\n--- Additional snippets (gap-fill iteration {iteration}) ---\n\n{new_snippets}"
 
     # Step 4 — Write final report
     console.print(Panel("✍️  [bold magenta]Writer[/] — composing the final report …"))
@@ -199,11 +251,12 @@ async def run_full_workflow(
     conn: FoundryConnection,
 ) -> WorkflowResult:
     """
-    End-to-end workflow that showcases BOTH orchestration patterns:
+    End-to-end workflow that showcases ALL THREE orchestration patterns:
 
       1. Planner runs first  (sequential — must happen before anything else).
       2. Retriever + ToolAgent run concurrently (fan-out on independent tasks).
       3. Critic reviews the merged results (sequential — needs retriever output).
+         If the Critic flags gaps → Retriever re-runs to fill them (feedback loop).
       4. Writer produces the final report (sequential — needs everything above).
     """
     wf = WorkflowResult(question=question)
@@ -227,18 +280,47 @@ async def run_full_workflow(
     console.print(Panel("[bold blue]ToolAgent results[/]"))
     console.print(Markdown(tool_text))
 
-    # ── Step 3: Critic (sequential — needs retriever output) ─────
-    console.print(Panel("🧐  [bold yellow]Critic[/] — reviewing for gaps & contradictions …"))
-    critic = create_critic(conn)
-    critic_prompt = (
-        f"Plan:\n{plan_text}\n\n"
-        f"Extracted snippets:\n{snippets_text}\n\n"
-        f"Keywords/stats:\n{tool_text}"
-    )
-    critique_text, elapsed = await _run_agent(critic, critic_prompt)
-    wf.steps.append(StepResult("Critic", critic_prompt, critique_text, elapsed))
-    console.print(Markdown(critique_text))
-    console.print(f"  ⏱  {elapsed:.1f}s\n")
+    # ── Step 3: Critic ⇄ Retriever feedback loop ─────────────────
+    critique_text = ""
+    for iteration in range(1, MAX_CRITIC_LOOPS + 1):
+        label = f"(iteration {iteration}/{MAX_CRITIC_LOOPS})" if MAX_CRITIC_LOOPS > 1 else ""
+        console.print(Panel(f"🧐  [bold yellow]Critic[/] — reviewing for gaps & contradictions … {label}"))
+        critic = create_critic(conn)
+        critic_prompt = (
+            f"Plan:\n{plan_text}\n\n"
+            f"Extracted snippets:\n{snippets_text}\n\n"
+            f"Keywords/stats:\n{tool_text}"
+        )
+        critique_text, elapsed = await _run_agent(critic, critic_prompt)
+        wf.steps.append(StepResult(f"Critic (iter {iteration})", critic_prompt, critique_text, elapsed))
+        console.print(Markdown(critique_text))
+        console.print(f"  ⏱  {elapsed:.1f}s\n")
+
+        if not _critic_found_gaps(critique_text) or iteration == MAX_CRITIC_LOOPS:
+            if _critic_found_gaps(critique_text):
+                console.print("[dim]  Max iterations reached — proceeding to Writer.[/]\n")
+            else:
+                console.print("[dim]  ✅ No gaps — proceeding to Writer.[/]\n")
+            break
+
+        # Re-retrieve: send the gaps back to the Retriever
+        console.print(Panel(f"🔍  [bold green]Retriever[/] — filling gaps flagged by Critic … {label}"))
+        retriever = create_retriever(conn)
+        re_retriever_prompt = (
+            f"The Critic found these gaps in the previous retrieval:\n{critique_text}\n\n"
+            f"Original plan:\n{plan_text}\n\n"
+            f"Previous snippets (already retrieved):\n{snippets_text}\n\n"
+            f"Documents:\n{doc_block}\n\n"
+            f"Please find additional relevant passages to fill ONLY the gaps listed above. "
+            f"Do not repeat previously retrieved snippets."
+        )
+        new_snippets, elapsed = await _run_agent(retriever, re_retriever_prompt)
+        wf.steps.append(StepResult(f"Retriever (gap-fill {iteration})", re_retriever_prompt, new_snippets, elapsed))
+        console.print(Markdown(new_snippets))
+        console.print(f"  ⏱  {elapsed:.1f}s\n")
+
+        # Merge new snippets with existing ones
+        snippets_text = f"{snippets_text}\n\n--- Additional snippets (gap-fill iteration {iteration}) ---\n\n{new_snippets}"
 
     # ── Step 4: Writer (sequential — needs everything) ───────────
     console.print(Panel("✍️  [bold magenta]Writer[/] — composing the final report …"))

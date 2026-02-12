@@ -222,7 +222,7 @@
 
         /* ─── Pipeline Visualisation ────────────────────────── */
         .pipeline {
-            display: flex;
+            display: none;
             align-items: center;
             gap: 4px;
             margin-bottom: 24px;
@@ -283,6 +283,8 @@
             display: flex;
             gap: 4px;
         }
+
+        .pipeline.visible { display: flex; }
 
         @keyframes pulse {
             0%, 100% { box-shadow: 0 0 8px rgba(245, 197, 66, 0.15); }
@@ -770,7 +772,7 @@
             .input-row textarea { font-size: 0.9rem; padding: 10px 12px; }
             .mode-btn { padding: 6px 10px; font-size: 0.8rem; }
             .btn-primary { padding: 10px 16px; font-size: 0.9rem; }
-            .pipeline { display: none; } /* Hide complex pipeline on small screens */
+            .pipeline, .pipeline.visible { display: none; } /* Hide complex pipeline on small screens */
             .demo-card-header { gap: 10px; }
             .demo-card-icon { width: 36px; height: 36px; font-size: 1.2rem; }
             .demo-card-title { font-size: 0.95rem; }
@@ -877,6 +879,23 @@
         ::-webkit-scrollbar-track { background: var(--bg); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        /* ─── Utility Classes ───────────────────────────────── */
+        .section-desc { color: var(--text-dim); margin-bottom: 16px; }
+        .section-title-sm { margin-bottom: 8px; }
+
+        .about-section { line-height: 1.8; }
+        .about-section h3 { margin-bottom: 12px; }
+        .about-section .section-spaced { margin-top: 20px; }
+        .about-section ul { margin: 12px 0 12px 24px; }
+        .about-section table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .about-section tr { border-bottom: 1px solid var(--border); }
+        .about-section tr:last-child { border-bottom: none; }
+        .about-section td { padding: 8px; }
+        .about-section td:first-child { font-weight: 600; }
+        .about-section td:last-child { color: var(--text-dim); }
+        .about-section a { color: var(--accent); }
+        .about-section .ref-list { margin: 0 0 0 24px; }
     </style>
 </head>
 <body>
@@ -919,7 +938,7 @@
             </div>
 
             <!-- Pipeline Visualisation  -->
-            <div id="pipeline-full" class="pipeline" style="display:none;" role="img" aria-label="Full pipeline: Planner, then concurrent Retriever and ToolAgent, then Critic, then Writer">
+            <div id="pipeline-full" class="pipeline" role="img" aria-label="Full pipeline: Planner, then concurrent Retriever and ToolAgent, then Critic, then Writer">
                 <div class="pipe-node planner" id="pipe-Planner">&#x1F5C2; Planner</div>
                 <span class="pipe-arrow">&#x2192;</span>
                 <div class="pipe-parallel">
@@ -935,7 +954,7 @@
                 <div class="pipe-node writer" id="pipe-Writer">&#x270D;&#xFE0F; Writer</div>
             </div>
 
-            <div id="pipeline-seq" class="pipeline" style="display:none;">
+            <div id="pipeline-seq" class="pipeline">
                 <div class="pipe-node planner" id="pipe-seq-Planner">&#x1F5C2; Planner</div>
                 <span class="pipe-arrow">&#x2192;</span>
                 <div class="pipe-node retriever" id="pipe-seq-Retriever">&#x1F50D; Retriever</div>
@@ -964,8 +983,8 @@
         <!-- ═══ Demos Tab ═══ -->
         <div class="tab-panel" id="tab-demos" role="tabpanel" aria-labelledby="tab-btn-demos">
             <div class="input-area">
-                <h3 id="demo-section-title" style="margin-bottom: 8px;">&#x1F3AE; MAF Tool Calling Demos</h3>
-                <p style="color: var(--text-dim); margin-bottom: 16px;">
+                <h3 id="demo-section-title" class="section-title-sm">&#x1F3AE; MAF Tool Calling Demos</h3>
+                <p class="section-desc">
                     Explore different ways the Microsoft Agent Framework uses tool calling and multi-agent orchestration.
                     Select a demo below to see it in action.
                 </p>
@@ -1018,7 +1037,7 @@
         <!-- ═══ Tool Demo Tab ═══ -->
         <div class="tab-panel" id="tab-tools" role="tabpanel" aria-labelledby="tab-btn-tools">
             <div class="input-area">
-                <p style="margin-bottom: 12px; color: var(--text-dim);">
+                <p class="section-desc">
                     Validate that function/tool calling works with Foundry Local + MAF.
                     This runs direct Python function calls and LLM-driven tool invocations.
                 </p>
@@ -1031,47 +1050,47 @@
 
         <!-- ═══ About Tab ═══ -->
         <div class="tab-panel" id="tab-about" role="tabpanel" aria-labelledby="tab-btn-about">
-            <div class="input-area" style="line-height: 1.8;">
-                <h3 style="margin-bottom: 12px;">About This Demo</h3>
+            <div class="input-area about-section">
+                <h3>About This Demo</h3>
                 <p>This demo shows <strong>multi-agent orchestration</strong> using two Microsoft technologies:</p>
-                <ul style="margin: 12px 0 12px 24px;">
+                <ul>
                     <li><strong>Microsoft Agent Framework (MAF)</strong> &mdash; unified SDK for building AI agents with tool calling, orchestration patterns, and session management.</li>
                     <li><strong>Foundry Local</strong> &mdash; on-device AI inference runtime. Models run on your GPU/NPU/CPU with no cloud connection needed.</li>
                 </ul>
-                <h3 style="margin-bottom: 8px; margin-top: 20px;">Agents</h3>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px; font-weight: 600;">&#x1F5C2; Planner</td>
-                        <td style="padding: 8px; color: var(--text-dim);">Breaks your question into 2-4 sub-tasks</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px; font-weight: 600;">&#x1F50D; Retriever</td>
-                        <td style="padding: 8px; color: var(--text-dim);">Reads local files, extracts relevant snippets with citations</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px; font-weight: 600;">&#x1F527; ToolAgent</td>
-                        <td style="padding: 8px; color: var(--text-dim);">Computes word counts, keyword extraction via function calling</td>
-                    </tr>
-                    <tr style="border-bottom: 1px solid var(--border);">
-                        <td style="padding: 8px; font-weight: 600;">&#x1F9D0; Critic</td>
-                        <td style="padding: 8px; color: var(--text-dim);">Reviews for gaps and contradictions</td>
+                <h3 class="section-spaced">Agents</h3>
+                <table>
+                    <tr>
+                        <td>&#x1F5C2; Planner</td>
+                        <td>Breaks your question into 2-4 sub-tasks</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px; font-weight: 600;">&#x270D;&#xFE0F; Writer</td>
-                        <td style="padding: 8px; color: var(--text-dim);">Produces the final report with source citations</td>
+                        <td>&#x1F50D; Retriever</td>
+                        <td>Reads local files, extracts relevant snippets with citations</td>
+                    </tr>
+                    <tr>
+                        <td>&#x1F527; ToolAgent</td>
+                        <td>Computes word counts, keyword extraction via function calling</td>
+                    </tr>
+                    <tr>
+                        <td>&#x1F9D0; Critic</td>
+                        <td>Reviews for gaps and contradictions</td>
+                    </tr>
+                    <tr>
+                        <td>&#x270D;&#xFE0F; Writer</td>
+                        <td>Produces the final report with source citations</td>
                     </tr>
                 </table>
-                <h3 style="margin-bottom: 8px;">Orchestration Patterns</h3>
+                <h3>Orchestration Patterns</h3>
                 <p><strong>Sequential</strong>: Planner &rarr; Retriever &rarr; Critic &rarr; Writer (each depends on the previous).</p>
                 <p><strong>Concurrent</strong>: Retriever + ToolAgent run in parallel (independent tasks).</p>
                 <p><strong>Full</strong> mode combines both: sequential where needed, concurrent where possible.</p>
-                <h3 style="margin-bottom: 8px; margin-top: 20px;">References</h3>
-                <ul style="margin-left: 24px;">
-                    <li><a href="https://foundrylocal.ai" target="_blank" rel="noopener" style="color: var(--accent);">Foundry Local</a></li>
-                    <li><a href="https://github.com/microsoft/Foundry-Local" target="_blank" rel="noopener" style="color: var(--accent);">Foundry Local GitHub</a></li>
-                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/" target="_blank" rel="noopener" style="color: var(--accent);">Microsoft Agent Framework</a></li>
-                    <li><a href="https://pypi.org/project/agent-framework-core/" target="_blank" rel="noopener" style="color: var(--accent);">agent-framework-core (PyPI)</a></li>
-                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/overview" target="_blank" rel="noopener" style="color: var(--accent);">MAF Orchestration Patterns</a></li>
+                <h3 class="section-spaced">References</h3>
+                <ul class="ref-list">
+                    <li><a href="https://foundrylocal.ai" target="_blank" rel="noopener">Foundry Local</a></li>
+                    <li><a href="https://github.com/microsoft/Foundry-Local" target="_blank" rel="noopener">Foundry Local GitHub</a></li>
+                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/" target="_blank" rel="noopener">Microsoft Agent Framework</a></li>
+                    <li><a href="https://pypi.org/project/agent-framework-core/" target="_blank" rel="noopener">agent-framework-core (PyPI)</a></li>
+                    <li><a href="https://learn.microsoft.com/en-us/agent-framework/user-guide/workflows/orchestrations/overview" target="_blank" rel="noopener">MAF Orchestration Patterns</a></li>
                 </ul>
             </div>
         </div>
@@ -1173,8 +1192,8 @@
             // Show pipeline
             const pFull = document.getElementById('pipeline-full');
             const pSeq = document.getElementById('pipeline-seq');
-            pFull.style.display = currentMode === 'full' ? 'flex' : 'none';
-            pSeq.style.display = currentMode === 'sequential' ? 'flex' : 'none';
+            if (currentMode === 'full') { pFull.classList.add('visible'); } else { pFull.classList.remove('visible'); }
+            if (currentMode === 'sequential') { pSeq.classList.add('visible'); } else { pSeq.classList.remove('visible'); }
 
             // Hide empty state
             document.getElementById('empty-state').style.display = 'none';
@@ -1349,8 +1368,8 @@
                 </div>
             `;
             document.getElementById('report-card').classList.remove('visible');
-            document.getElementById('pipeline-full').style.display = 'none';
-            document.getElementById('pipeline-seq').style.display = 'none';
+            document.getElementById('pipeline-full').classList.remove('visible');
+            document.getElementById('pipeline-seq').classList.remove('visible');
             // Reset pipe nodes
             document.querySelectorAll('.pipe-node').forEach(n => {
                 n.className = n.className.replace(/ active| done| error/g, '');

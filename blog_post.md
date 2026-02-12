@@ -39,12 +39,22 @@ User Question
      │
      ▼
   Critic       → Reviews for gaps and contradictions
-     │
-     ▼
+     │            │
+     │       Gaps found?
+     │        YES │ NO
+     │            │  └────┐
+     │            ▼      │
+     │       Retriever   │  → Re-retrieves to fill gaps
+     │       (gap-fill)   │
+     │            │      │
+     │            ▼      │
+     │         Critic     │  → Re-evaluates (up to 2 iterations)
+     │            │      │
+     ▼◄────────────┴──────┘
   Writer       → Produces final report with citations
 ```
 
-Each agent has a focused system prompt and receives structured input from previous agents. This decomposition improves quality and makes the pipeline debuggable.
+Each agent has a focused system prompt and receives structured input from previous agents. The Critic–Retriever feedback loop is a key innovation: rather than accepting whatever the Retriever produces on the first pass, the Critic can request targeted gap-filling, resulting in higher quality reports.
 
 ---
 
@@ -129,9 +139,9 @@ def create_agents(endpoint: str, model: str):
     return {"planner": planner, "retriever": retriever, ...}
 ```
 
-### 3. Sequential vs. Concurrent Orchestration
+### 3. Sequential vs. Concurrent Orchestration (with Feedback Loop)
 
-The demo showcases both orchestration patterns:
+The demo showcases three orchestration patterns:
 
 **Sequential Pipeline** — Each agent waits for the previous one:
 
@@ -145,10 +155,20 @@ async def run_sequential(agents, question, docs):
         f"Plan: {plan}\n\nDocuments: {docs}"
     )
     
-    # Step 3: Critic reviews for gaps
-    critique = await agents["critic"].run(
-        f"Plan: {plan}\n\nContext: {context}"
-    )
+    # Step 3: Critic reviews — may loop back to Retriever
+    for iteration in range(MAX_CRITIC_LOOPS):
+        critique = await agents["critic"].run(
+            f"Plan: {plan}\n\nContext: {context}"
+        )
+        
+        if not critic_found_gaps(critique):
+            break  # No gaps — proceed to Writer
+        
+        # Gap-fill: Retriever fetches additional content
+        new_context = await agents["retriever"].run(
+            f"Gaps: {critique}\n\nPrevious: {context}\n\nDocs: {docs}"
+        )
+        context = f"{context}\n\n{new_context}"
     
     # Step 4: Writer produces final report
     report = await agents["writer"].run(
@@ -157,6 +177,8 @@ async def run_sequential(agents, question, docs):
     
     return report
 ```
+
+The Critic is instructed to output `GAPS FOUND` or `NO GAPS` at the start of its response, making it easy to parse programmatically. When gaps are found, the orchestrator sends the specific gaps back to the Retriever with the original documents, merges the new snippets with existing ones, and re-runs the Critic. This loop runs up to 2 times before handing off to the Writer.
 
 **Concurrent Fan-Out** — Independent tasks run in parallel:
 
@@ -228,6 +250,10 @@ source.onmessage = (event) => {
 ---
 
 ## What Makes This Demo Interesting
+
+### Iterative Quality Improvement
+
+The Critic–Retriever feedback loop demonstrates a powerful pattern: agents that evaluate their own pipeline's output and request corrections. Rather than a single pass that may miss important context, the system iteratively refines its retrieval until the Critic is satisfied (or a maximum iteration count is reached). This is similar to how human researchers work—reviewing their sources, identifying what's missing, and going back to find more.
 
 ### Completely Local Execution
 
@@ -329,6 +355,7 @@ This demo is a starting point. Here are ideas for extending it:
 3. **Add human-in-the-loop**: Pause for user approval before the Writer produces the final report
 4. **Build evaluation pipelines**: Measure agent quality with automated metrics
 5. **Deploy as a service**: Package the orchestrator as a REST API for team use
+6. **Extend the feedback loop**: Add more sophisticated gap detection, or let the Critic suggest entirely new sub-tasks for the Planner
 
 ---
 

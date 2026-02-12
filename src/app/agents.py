@@ -117,8 +117,14 @@ def create_critic(conn: FoundryConnection) -> ChatAgent:
             "Your job:\n"
             "  1. Check for gaps — are any plan tasks unanswered?\n"
             "  2. Check for contradictions between snippets.\n"
-            "  3. Suggest 1-2 specific improvements or missing details.\n"
-            "Output a short numbered list of issues (or say 'No issues found')."
+            "  3. Suggest 1-2 specific improvements or missing details.\n\n"
+            "OUTPUT FORMAT (you MUST follow this exactly):\n"
+            "  • If there are gaps or issues, start your response with the line:\n"
+            "      GAPS FOUND\n"
+            "    then list the specific gaps or issues as a numbered list.\n"
+            "  • If everything looks complete, start your response with the line:\n"
+            "      NO GAPS\n"
+            "    then briefly confirm the snippets are sufficient."
         ),
     )
 

@@ -36,6 +36,7 @@ This demo teaches you how to:
 - **Wire agents to a local LLM** via MAF's `OpenAIChatClient` (OpenAI-compatible API)
 - **Orchestrate agents sequentially** — a pipeline where each agent builds on the previous output
 - **Orchestrate agents concurrently** — fan-out independent tasks in parallel with `asyncio.gather`
+- **Implement a feedback loop** — the Critic loops back to the Retriever when it flags gaps, iterating until quality is sufficient
 - **Use function/tool calling** — let the LLM invoke Python functions (`word_count`, `extract_keywords`)
 - **Build a web UI** — a browser-based interface that streams agent progress in real time
 
@@ -77,14 +78,15 @@ You type a research question. Four AI agents collaborate locally to answer it:
 |-------|------|
 | **Planner** | Breaks your question into sub-tasks |
 | **Retriever** | Reads local files and extracts relevant snippets with citations |
-| **Critic** | Reviews for gaps and contradictions |
+| **Critic** | Reviews for gaps and contradictions; loops back to Retriever if gaps are found |
 | **Writer** | Produces a final report citing your local documents |
 | **ToolAgent** *(optional)* | Computes word counts and keyword extraction |
 
-The demo shows **two orchestration patterns** in a single run:
+The demo shows **three orchestration patterns** in a single run:
 
 1. **Sequential pipeline** — Planner runs first, then Retriever, Critic, Writer in order (each agent needs the previous agent's output).
 2. **Concurrent fan-out** — Retriever and ToolAgent run *in parallel* (they don't depend on each other), saving time.
+3. **Critic–Retriever feedback loop** — When the Critic finds gaps, it loops back to the Retriever for additional retrieval, then re-evaluates (up to 2 iterations).
 
 ```
 User question
@@ -99,7 +101,19 @@ User question
               ▼
            Critic          ← sequential (needs retriever output)
               │
-              ▼
+         ┌────┴────┐
+         │ Gaps?   │
+         └────┬────┘
+          YES │ NO
+              │  └──────────┐
+              ▼             │
+        Retriever           │  ← feedback loop (fills gaps)
+         (gap-fill)         │
+              │             │
+              ▼             │
+           Critic           │  ← re-evaluate
+              │             │
+              ▼◄────────────┘
            Writer          ← sequential (needs everything above)
               │
               ▼
@@ -244,7 +258,7 @@ This tests:
 │   ├── foundry_boot.py   # Foundry Local SDK bootstrapper
 │   ├── agents.py         # Agent definitions (Planner, Retriever, Critic, Writer, ToolAgent)
 │   ├── documents.py      # Local file loader with chunking
-│   ├── orchestrator.py   # Sequential + Concurrent orchestration engine
+│   ├── orchestrator.py   # Sequential + Concurrent + Feedback loop orchestration engine
 │   ├── tool_demo.py      # Tool/function calling validation demo
 │   ├── web.py            # Flask web UI (browser-based interface)
 │   ├── templates/
@@ -279,6 +293,8 @@ This tests:
 **Control plane** — The `FoundryLocalManager` from `foundry-local-sdk` starts the service, downloads models, and returns the endpoint URL. ([SDK reference](https://learn.microsoft.com/en-us/azure/ai-foundry/foundry-local/reference/reference-sdk?view=foundry-classic))
 
 **Data plane** — MAF's `OpenAIChatClient` sends chat completions to Foundry Local's OpenAI-compatible API (typically `http://localhost:<port>/v1` — the port is assigned dynamically). No separate OpenAI key is needed.
+
+**Feedback loop** — The Critic agent is instructed to output `GAPS FOUND` or `NO GAPS` at the start of its response. When gaps are detected, the orchestrator sends them back to the Retriever with the original documents, merges the new snippets, and re-runs the Critic. This iterates up to 2 times before the Writer takes over, ensuring higher quality reports.
 
 ## Example Output
 

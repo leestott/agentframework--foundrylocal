@@ -43,6 +43,7 @@ from app.agents import (  # noqa: E402
     extract_keywords,
 )
 from app.demos import list_demos, get_demo  # noqa: E402
+from app.orchestrator import MAX_CRITIC_LOOPS, _critic_found_gaps  # noqa: E402
 
 load_dotenv()
 logging.basicConfig(
@@ -227,13 +228,36 @@ def run_workflow():
                     "concurrent": True,
                 })
 
-                # ── Step 3: Critic ──────────────────────────────
-                yield _sse({"type": "step_start", "agent": "Critic", "description": "Reviewing for gaps & contradictions…"})
-                critic = create_critic(conn)
-                critique_text, elapsed = loop.run_until_complete(
-                    _agent_step(critic, f"Plan:\n{plan_text}\n\nExtracted snippets:\n{snippets_text}\n\nKeywords/stats:\n{tool_text}")
-                )
-                yield _sse({"type": "step_done", "agent": "Critic", "output": critique_text, "elapsed": round(elapsed, 2)})
+                # ── Step 3: Critic ⇄ Retriever feedback loop ──
+                critique_text = ""
+                for iteration in range(1, MAX_CRITIC_LOOPS + 1):
+                    iter_label = f" (iteration {iteration}/{MAX_CRITIC_LOOPS})" if MAX_CRITIC_LOOPS > 1 else ""
+                    yield _sse({"type": "step_start", "agent": "Critic", "description": f"Reviewing for gaps & contradictions…{iter_label}"})
+                    critic = create_critic(conn)
+                    critique_text, elapsed = loop.run_until_complete(
+                        _agent_step(critic, f"Plan:\n{plan_text}\n\nExtracted snippets:\n{snippets_text}\n\nKeywords/stats:\n{tool_text}")
+                    )
+                    yield _sse({"type": "step_done", "agent": f"Critic{iter_label}", "output": critique_text, "elapsed": round(elapsed, 2)})
+
+                    if not _critic_found_gaps(critique_text) or iteration == MAX_CRITIC_LOOPS:
+                        break
+
+                    # Re-retrieve to fill gaps
+                    yield _sse({"type": "step_start", "agent": "Retriever", "description": f"Filling gaps flagged by Critic…{iter_label}"})
+                    retriever = create_retriever(conn)
+                    re_retriever_prompt = (
+                        f"The Critic found these gaps in the previous retrieval:\n{critique_text}\n\n"
+                        f"Original plan:\n{plan_text}\n\n"
+                        f"Previous snippets (already retrieved):\n{snippets_text}\n\n"
+                        f"Documents:\n{doc_block}\n\n"
+                        f"Please find additional relevant passages to fill ONLY the gaps listed above. "
+                        f"Do not repeat previously retrieved snippets."
+                    )
+                    new_snippets, elapsed = loop.run_until_complete(
+                        _agent_step(retriever, re_retriever_prompt)
+                    )
+                    yield _sse({"type": "step_done", "agent": f"Retriever (gap-fill{iter_label})", "output": new_snippets, "elapsed": round(elapsed, 2)})
+                    snippets_text = f"{snippets_text}\n\n--- Additional snippets (gap-fill iteration {iteration}) ---\n\n{new_snippets}"
 
                 # ── Step 4: Writer ──────────────────────────────
                 yield _sse({"type": "step_start", "agent": "Writer", "description": "Composing the final report…"})
@@ -258,12 +282,36 @@ def run_workflow():
                 )
                 yield _sse({"type": "step_done", "agent": "Retriever", "output": snippets_text, "elapsed": round(elapsed, 2)})
 
-                yield _sse({"type": "step_start", "agent": "Critic", "description": "Reviewing for gaps & contradictions…"})
-                critic = create_critic(conn)
-                critique_text, elapsed = loop.run_until_complete(
-                    _agent_step(critic, f"Plan:\n{plan_text}\n\nExtracted snippets:\n{snippets_text}")
-                )
-                yield _sse({"type": "step_done", "agent": "Critic", "output": critique_text, "elapsed": round(elapsed, 2)})
+                # Critic ⇄ Retriever feedback loop
+                critique_text = ""
+                for iteration in range(1, MAX_CRITIC_LOOPS + 1):
+                    iter_label = f" (iteration {iteration}/{MAX_CRITIC_LOOPS})" if MAX_CRITIC_LOOPS > 1 else ""
+                    yield _sse({"type": "step_start", "agent": "Critic", "description": f"Reviewing for gaps & contradictions…{iter_label}"})
+                    critic = create_critic(conn)
+                    critique_text, elapsed = loop.run_until_complete(
+                        _agent_step(critic, f"Plan:\n{plan_text}\n\nExtracted snippets:\n{snippets_text}")
+                    )
+                    yield _sse({"type": "step_done", "agent": f"Critic{iter_label}", "output": critique_text, "elapsed": round(elapsed, 2)})
+
+                    if not _critic_found_gaps(critique_text) or iteration == MAX_CRITIC_LOOPS:
+                        break
+
+                    # Re-retrieve to fill gaps
+                    yield _sse({"type": "step_start", "agent": "Retriever", "description": f"Filling gaps flagged by Critic…{iter_label}"})
+                    retriever = create_retriever(conn)
+                    re_retriever_prompt = (
+                        f"The Critic found these gaps in the previous retrieval:\n{critique_text}\n\n"
+                        f"Original plan:\n{plan_text}\n\n"
+                        f"Previous snippets (already retrieved):\n{snippets_text}\n\n"
+                        f"Documents:\n{doc_block}\n\n"
+                        f"Please find additional relevant passages to fill ONLY the gaps listed above. "
+                        f"Do not repeat previously retrieved snippets."
+                    )
+                    new_snippets, elapsed = loop.run_until_complete(
+                        _agent_step(retriever, re_retriever_prompt)
+                    )
+                    yield _sse({"type": "step_done", "agent": f"Retriever (gap-fill{iter_label})", "output": new_snippets, "elapsed": round(elapsed, 2)})
+                    snippets_text = f"{snippets_text}\n\n--- Additional snippets (gap-fill iteration {iteration}) ---\n\n{new_snippets}"
 
                 yield _sse({"type": "step_start", "agent": "Writer", "description": "Composing the final report…"})
                 writer = create_writer(conn)
